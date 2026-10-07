@@ -1,0 +1,26 @@
+# Phân tích & Sửa lỗi Falsy Value khi Cập nhật Trạng thái Thiết bị Thông minh
+
+## 1. Mục tiêu
+- **Nhận diện lỗi Falsy:** Hiểu rõ tại sao các giá trị `0` và `false` bị bỏ qua trong các câu lệnh điều kiện `if (prop)`.
+- **Phân biệt kiểm tra tồn tại vs kiểm tra giá trị:** Nắm vững cách sử dụng toán tử so sánh `!== undefined` để xác định một thuộc tính có được truyền vào đối tượng hay không.
+- **Thao tác an toàn:** Cập nhật chính xác trạng thái thiết bị Smart Home mà không làm mất dữ liệu khi giá trị mục tiêu rơi vào nhóm Falsy.
+
+---
+
+## 2. Phân tích Lỗi Kỹ Thuật (Bug Analysis)
+
+Hàm `updateDevice` ban đầu gặp lỗi logic khi xử lý các giá trị `Falsy`. 
+
+- **Khái niệm Falsy:** Trong JavaScript, khi một giá trị được đưa vào bối cảnh Boolean (như điều kiện của vòng lặp `if`), 6 giá trị sau sẽ bị ép kiểu thành `false`: `false`, `0`, `""` (chuỗi rỗng), `null`, `undefined`, và `NaN`.
+- **Dòng code lỗi:** `if (updatedData.isActive)` và `if (updatedData.powerWatts)`.
+- **Nguyên nhân:** Khi chủ nhà muốn tắt điều hòa bằng cách truyền `{ isActive: false }`, trình biên dịch đánh giá `if (false)`, dẫn đến khối lệnh bên trong bị bỏ qua hoàn toàn. Tương tự, thao tác hạ công suất về `0W` với `{ powerWatts: 0 }` cũng bị đánh giá là `if (0)` (tức là false), lệnh cập nhật thất bại.
+- **Giải pháp:** Cần thay đổi tư duy từ "kiểm tra xem giá trị có truthy không" sang "kiểm tra xem thuộc tính có tồn tại trong dữ liệu cập nhật không". Sửa điều kiện thành `if (updatedData.isActive !== undefined)`. Điều này đảm bảo các giá trị hợp lệ như `0` hoặc `false` vẫn vượt qua được vòng kiểm tra và được ghi đè thành công.
+
+---
+
+## 3. Bảng Test Cases (Kiểm thử)
+
+| Trường hợp kiểm thử | Dữ liệu đầu vào (Input) | Kết quả sai thực tế (Mã cũ) | Kết quả đúng mong đợi (Mã mới) |
+| :--- | :--- | :--- | :--- |
+| **TC01: Tắt thiết bị (Gán Boolean Falsy)** | `targetId: 'D01'`<br>`updatedData: { isActive: false }` | Thiết bị D01 **không bị tắt**, thuộc tính `isActive` vẫn giữ nguyên giá trị `true` cũ. | Thiết bị D01 **tắt thành công**, thuộc tính `isActive` được cập nhật thành `false`. |
+| **TC02: Hạ công suất về 0 (Gán Number Falsy)** | `targetId: 'D02'`<br>`updatedData: { powerWatts: 0 }` | Công suất thiết bị D02 **không thay đổi**, lệnh cập nhật bị bỏ qua. | Công suất thiết bị D02 được **cập nhật thành công** bằng `0`. |
